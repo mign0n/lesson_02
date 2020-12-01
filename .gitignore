@@ -7,3 +7,9 @@ env/
 
 # PyCharm IDE
 .idea/
+
+# Logging
+*.log
+
+# Secret settings
+settings.py
