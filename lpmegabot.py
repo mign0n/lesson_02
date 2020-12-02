@@ -1,17 +1,17 @@
-import logging
-
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
-from datetime import datetime as dt
-from string import punctuation
 import ephem
+import logging
 import settings
 
-logging.basicConfig(format="%(name)s - %(levelname)s - %(message)s",
-                    level=logging.INFO,
-                    filename="bot.log")
+from datetime import datetime as dt
+from string import punctuation
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
+
 
 API_KEY = settings.API_KEY
 DATE_TODAY = dt.today().strftime("%Y/%m/%d")
+logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+                    level=logging.INFO,
+                    filename="bot.log")
 
 
 def greet_user(update, context):
@@ -25,8 +25,7 @@ def talk_to_me(update, context):
 
 
 def get_constelation(update, context):
-    text = update.message.text
-    _, planet = text.split()
+    *_, planet = context.args
     planet = planet.lower().capitalize()
     try:
         p = getattr(ephem, planet)(DATE_TODAY)
@@ -35,15 +34,14 @@ def get_constelation(update, context):
         planet = "Moon"
         p = getattr(ephem, planet)(DATE_TODAY)
     try:
-        _, constellation = ephem.constellation(p)
+        *_, constellation = ephem.constellation(p)
         update.message.reply_text(f"Today {planet.capitalize()} is in the constellation of {constellation}.")
     except TypeError:
         update.message.reply_text("It's not a planet. Enter the name of a planet in the Solar System.")
 
 
 def wordcount(update, context):
-    _, *words = update.message.text.split()
-    text = ' '.join(words)
+    text = ' '.join(context.args)
     for char in punctuation:
         text = text.replace(char, '')
     n_words = len(text.split())
@@ -76,6 +74,7 @@ def main():
     dp.add_handler(CommandHandler("next_full_moon", get_next_full_moon))
     dp.add_handler((CommandHandler("wordcount", wordcount)))
     dp.add_handler(MessageHandler(Filters.text, talk_to_me))
+
     bot.start_polling()
     bot.idle()
 
