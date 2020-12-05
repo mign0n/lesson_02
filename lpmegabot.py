@@ -15,7 +15,7 @@ logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s
                     level=logging.INFO,
                     filename="bot.log")
 
-CITIES = set(cities.RU_CITIES)
+CITIES = cities.ru_cities
 
 
 def greet_user(update, context):
@@ -78,7 +78,7 @@ def get_letter(word, position='last'):
             letter = word[0]
         else:
             letter = word[-1] if word[-1] not in 'йьы' else word[-2]
-        return letter
+        return letter.upper()
 
 
 def cities_game_logic(user_city, bot_city_prev, remaining_cities):
@@ -88,13 +88,13 @@ def cities_game_logic(user_city, bot_city_prev, remaining_cities):
     first_letter = get_letter(user_city, position='first')
     if bot_city_prev is None or (first_letter == last_letter_prev):
         user_city = user_city.lower().capitalize()
-        if user_city in remaining_cities:
-            remaining_cities.remove(user_city)
+        if user_city in remaining_cities.get(first_letter, (None,)):
+            remaining_cities[first_letter].remove(user_city)
             last_letter = get_letter(user_city)
-            bot_city = choice([city for city in remaining_cities if city[0] == last_letter.upper()])
-            remaining_cities.remove(bot_city)
+            bot_city = choice(list(remaining_cities.get(last_letter)))
+            remaining_cities[last_letter].remove(bot_city)
         else:
-            notice = f"Город с названием '{user_city}' уже называли, либо его несуществует в России."
+            notice = f"Город с названием '{user_city}' уже называли, либо его не существует в России."
     else:
         notice = f"Введите название российского города на букву '{last_letter_prev}'."
     return bot_city, remaining_cities, notice
@@ -105,7 +105,7 @@ def cities_game(update, context):
         *_, user_city = context.args
         bot_city, remaining_cities, notice = cities_game_logic(user_city,
                                                                context.user_data.get('bot_city_prev'),
-                                                               context.user_data.get('remaining_city', CITIES))
+                                                               context.user_data.get('remaining_cities', CITIES))
         context.user_data['bot_city_prev'] = bot_city
         context.user_data['remaining_cities'] = remaining_cities
         if notice is None:
