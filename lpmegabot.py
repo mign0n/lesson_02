@@ -78,7 +78,19 @@ def get_letter(word, position='last'):
             letter = word[0]
         else:
             letter = word[-1] if word[-1] not in 'йьы' else word[-2]
-        return letter.upper()
+        return letter
+
+
+def prettify_name(name):
+    if not name:
+        return
+    if ' ' in name:
+        p_name = ' '.join([x.capitalize() for x in name.split()])
+    elif '-' in name:
+        p_name = '-'.join([x.capitalize() for x in name.split('-') if len(x) > 2])
+    else:
+        p_name = name.capitalize()
+    return p_name
 
 
 def cities_game_logic(user_city, bot_city_prev, remaining_cities):
@@ -87,13 +99,14 @@ def cities_game_logic(user_city, bot_city_prev, remaining_cities):
     last_letter_prev = get_letter(bot_city_prev)
     first_letter = get_letter(user_city, position='first')
     if bot_city_prev is None or (first_letter == last_letter_prev):
-        user_city = user_city.lower().capitalize()
+        user_city = user_city.lower()
         if user_city in remaining_cities.get(first_letter, (None,)):
             remaining_cities[first_letter].remove(user_city)
             last_letter = get_letter(user_city)
             bot_city = choice(list(remaining_cities.get(last_letter)))
             remaining_cities[last_letter].remove(bot_city)
         else:
+            user_city = prettify_name(user_city)
             notice = f"Город с названием '{user_city}' уже называли, либо его не существует в России."
     else:
         notice = f"Введите название российского города на букву '{last_letter_prev}'."
@@ -101,17 +114,18 @@ def cities_game_logic(user_city, bot_city_prev, remaining_cities):
 
 
 def cities_game(update, context):
-    if context.args:
-        *_, user_city = context.args
+    if not context.args:
+        response = "Ваш ход."
+    else:
+        user_city = ' '.join(context.args)
         bot_city, remaining_cities, notice = cities_game_logic(user_city,
                                                                context.user_data.get('bot_city_prev'),
                                                                context.user_data.get('remaining_cities', CITIES))
         context.user_data['bot_city_prev'] = bot_city
         context.user_data['remaining_cities'] = remaining_cities
-        if notice is None:
-            update.message.reply_text(f"{bot_city}, Ваш ход.")
-        else:
-            update.message.reply_text(notice)
+        bot_city = prettify_name(bot_city)
+        response = notice if notice is not None else f"{bot_city}, Ваш ход."
+    update.message.reply_text(response)
 
 
 def main():
