@@ -1,4 +1,5 @@
 import ephem
+import numexpr as ne
 import logging
 
 import cities
@@ -128,6 +129,23 @@ def cities_game(update, context):
     update.message.reply_text(response)
 
 
+def calc(update, context):
+    print(context.args)
+    result = None
+    if not context.args:
+        return
+    expr = ''.join(context.args)
+    try:
+        result = ne.evaluate(expr)
+    except ZeroDivisionError:
+        update.message.reply_text("You can't divide by zero")
+    try:
+        response = float(result)
+        update.message.reply_text(response)
+    except TypeError:
+        return
+
+
 def main():
     bot = Updater(API_KEY)
 
@@ -137,6 +155,7 @@ def main():
     dp.add_handler(CommandHandler("next_full_moon", get_next_full_moon))
     dp.add_handler((CommandHandler("wordcount", wordcount)))
     dp.add_handler((CommandHandler("cities", cities_game)))
+    dp.add_handler(CommandHandler("calc", calc))
 
     dp.add_handler(MessageHandler(Filters.text, talk_to_me))
 
