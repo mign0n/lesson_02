@@ -70,18 +70,6 @@ def get_next_full_moon(update, context):
     update.message.reply_text(result)
 
 
-def get_letter(word, position='last'):
-    if word is None:
-        return None
-    else:
-        word = word.lower()
-        if position == 'first':
-            letter = word[0]
-        else:
-            letter = word[-1] if word[-1] not in 'йьы' else word[-2]
-        return letter
-
-
 def prettify_name(name):
     if not name:
         return
@@ -94,34 +82,50 @@ def prettify_name(name):
     return p_name
 
 
-def cities_game_logic(user_city, bot_city_prev, remaining_cities):
-    notice = None
-    bot_city = None
-    last_letter_prev = get_letter(bot_city_prev)
-    first_letter = get_letter(user_city, position='first')
-    if bot_city_prev is None or (first_letter == last_letter_prev):
-        user_city = user_city.lower()
-        if user_city in remaining_cities.get(first_letter, (None,)):
-            remaining_cities[first_letter].remove(user_city)
-            last_letter = get_letter(user_city)
-            bot_city = choice(list(remaining_cities.get(last_letter)))
-            remaining_cities[last_letter].remove(bot_city)
+class CitiesGame:
+    def __init__(self, remaining_cities):
+        self.bot_city = None
+        self.notice = None
+        self.impossible_start_letters = 'йьыъ'
+        self.last = -1
+        self.first = 0
+        self.remaining_cities = remaining_cities
+
+    def _get_letter(self, word, pos):
+        if word is None:
+            return
+        word = word.lower()
+        if word[pos] not in self.impossible_start_letters:
+            letter = word[pos]
         else:
-            user_city = prettify_name(user_city)
-            notice = f"Город с названием '{user_city}' уже называли, либо его не существует в России."
-    else:
-        notice = f"Введите название российского города на букву '{last_letter_prev}'."
-    return bot_city, remaining_cities, notice
+            letter = self._get_letter(word[:self.last], self.last)
+        return letter
+
+    def logic(self, user_city, bot_city_prev):
+        last_letter_prev = self._get_letter(bot_city_prev, self.last)
+        first_letter = self._get_letter(user_city, pos=self.first)
+        if bot_city_prev is None or (first_letter == last_letter_prev):
+            user_city = user_city.lower()
+            if user_city in self.remaining_cities.get(first_letter, (None,)):
+                self.remaining_cities[first_letter].remove(user_city)
+                last_letter = self._get_letter(user_city, self.last)
+                self.bot_city = choice(list(self.remaining_cities.get(last_letter)))
+                self.remaining_cities[last_letter].remove(self.bot_city)
+            else:
+                user_city = prettify_name(user_city)
+                self.notice = f"Город с названием '{user_city}' уже называли, либо его не существует в России."
+        else:
+            self.notice = f"Введите название российского города на букву '{last_letter_prev}'."
+        return self.bot_city, self.remaining_cities, self.notice
 
 
 def cities_game(update, context):
+    game = CitiesGame(CITIES)
     if not context.args:
         response = "Ваш ход."
     else:
         user_city = ' '.join(context.args)
-        bot_city, remaining_cities, notice = cities_game_logic(user_city,
-                                                               context.user_data.get('bot_city_prev'),
-                                                               context.user_data.get('remaining_cities', CITIES))
+        bot_city, remaining_cities, notice = game.logic(user_city, context.user_data.get('bot_city_prev'))
         context.user_data['bot_city_prev'] = bot_city
         context.user_data['remaining_cities'] = remaining_cities
         bot_city = prettify_name(bot_city)
