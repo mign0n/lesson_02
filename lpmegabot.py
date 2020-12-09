@@ -1,5 +1,4 @@
 import ephem
-import numexpr as ne
 import logging
 
 import cities
@@ -133,21 +132,47 @@ def cities_game(update, context):
     update.message.reply_text(response)
 
 
+def first_priority_ops(parts):
+    if isinstance(parts, list):
+        for i in range(len(parts)):
+            parts[i] = first_priority_ops(parts[i])
+        return parts[0] - sum(parts[1:])
+    elif isinstance(parts, str):
+        if '*' in parts:
+            result, *multipliers = map(first_priority_ops, parts.split('*'))
+            for multiplier in multipliers:
+                result *= multiplier
+            return result
+        elif '/' in parts:
+            result, *divisors = map(first_priority_ops, parts.split('/'))
+            for divisor in divisors:
+                result /= divisor
+            return result
+        else:
+            return float(parts)
+    return parts
+
+
+def last_priority_ops(expr):
+    parts = expr.replace(' ', '').split('+')
+    for i in range(len(parts)):
+        parts[i] = parts[i].split('-')
+    for i in range(len(parts)):
+        parts[i] = first_priority_ops(parts[i])
+    return sum(parts)
+
+
 def calc(update, context):
-    print(context.args)
-    result = None
     if not context.args:
         return
     expr = ''.join(context.args)
     try:
-        result = ne.evaluate(expr)
+        result = last_priority_ops(expr)
     except ZeroDivisionError:
-        update.message.reply_text("You can't divide by zero")
-    try:
-        response = float(result)
-        update.message.reply_text(response)
-    except TypeError:
-        return
+        result = "You can't divide by zero."
+    except ValueError:
+        result = "Invalid operands you entered. Try again."
+    update.message.reply_text(result)
 
 
 def main():
