@@ -155,11 +155,7 @@ def first_priority_ops(parts):
 
 def last_priority_ops(expr):
     parts = expr.replace(' ', '').split('+')
-    for i in range(len(parts)):
-        parts[i] = parts[i].split('-')
-    for i in range(len(parts)):
-        parts[i] = first_priority_ops(parts[i])
-    return sum(parts)
+    return sum([first_priority_ops(part.split('-')) for part in parts])
 
 
 def calc(update, context):
